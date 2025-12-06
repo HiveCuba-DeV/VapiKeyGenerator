@@ -7,7 +7,7 @@ Generator of VAPI Key Pairs for Push Notification
 **VapiKeyGenerator** is a simple Python utility that generates VAPID (Voluntary Application Server Identification) key pairs.  
 These keys are required to authenticate your server when sending Web Push notifications to browsers.
 
-The tool is based on the [`py-vapid`](https://github.com/web-push-libs/py-vapid) library and outputs both the **public** and **private** keys.
+The tool is based on the [`cryptography`](https://github.com/pyca/cryptography/) library and outputs both the **public** and **private** keys.
 
 - The **public key** is shared with your client-side application (e.g., React PWA).
 - The **private key** is kept securely on your backend (e.g., Flask) to sign push requests.
@@ -29,7 +29,7 @@ The tool is based on the [`py-vapid`](https://github.com/web-push-libs/py-vapid)
 - Dependencies:
 
   ```bash
-  pip install py-vapid
+  pip install cryptography
   ```
 
 ---
@@ -57,27 +57,53 @@ Private Key: 1aExAMPLePrIVateKey...
 
    - Use the **public key** in your `pushManager.subscribe` call:
 
-     ```typescript
-     registration.pushManager.subscribe({
-       userVisibleOnly: true,
-       applicationServerKey: vapidPublicKey,
-     });
-     ```
+    ```typescript
+
+    export function urlBase64ToUint8Array(base64String: string):Uint8Array {
+        const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding)
+        .replace(/-/g, "+")
+        .replace(/_/g, "/");
+
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+
+        for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
+
+
+    const VAPID_PUBLIC_KEY = "BExAMPLEPuBLicKeyBase64Url";
+    registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+
+    ```
 
 2. **Backend (Flask + pywebpush)**
 
    - Use the **private key** to sign push requests:
 
-     ```python
-     from pywebpush import webpush
+    ```python
+    from pywebpush import webpush
 
-     webpush(
-       subscription_info=subscription,
-       data="Hello from HiveP2P!",
-       vapid_private_key=VAPID_PRIVATE_KEY,
-       vapid_claims={"sub": "mailto:admin@yourdomain.com"}
-     )
-     ```
+    VAPID_PRIVATE_KEY = "1aExAMPLePrIVateKeyBase64Url"
+    VAPID_PUBLIC_KEY = "BExAMPLEPuBLicKeyBase64Url"
+
+    VAPID_CLAIMS = {
+      "sub": "mailto:admin@hivep2p.com"
+    }
+
+    webpush(
+    subscription_info=subscription,
+    data=json.dumps({"title": "HiveP2P", "body": "New message"}),
+    vapid_private_key=VAPID_PRIVATE_KEY,
+    vapid_claims=VAPID_CLAIMS
+    )
+    ```
 
 ---
 
